@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -37,6 +38,8 @@ func main() {
 
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/profile/", profileHandler)
+	http.HandleFunc("/auth/", authHandler)
+	http.HandleFunc("/poeple-list/", poepleListHandler)
 
 	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -148,4 +151,45 @@ func getPersonByID(id int) (*Person, error) {
 		return nil, err
 	}
 	return &person, nil
+}
+
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	// Check if the user is already authenticated
+	fmt.Println("authHandler")
+	cookie, err := r.Cookie("authenticated")
+	if err == nil && cookie.Value == "true" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	fmt.Println("r.Method", r.Method)
+	if r.Method == http.MethodPost {
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		if username == "admin" && password == "1234" {
+			cookie := http.Cookie{
+				Name:  "authenticated",
+				Value: "true",
+			}
+			http.SetCookie(w, &cookie)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+	}
+	err = templates.ExecuteTemplate(w, "auth.html", nil)
+	if err != nil {
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+	}
+}
+
+func poepleListHandler(w http.ResponseWriter, r *http.Request) {
+	people, err := getAllPeople()
+	if err != nil {
+		http.Error(w, "Error fetching people", http.StatusInternalServerError)
+		return
+	}
+	err = templates.ExecuteTemplate(w, "poeple-list.html", people)
+	if err != nil {
+		fmt.Println("Error rendering template", err)
+		http.Error(w, "Error rendering template", http.StatusInternalServerError)
+	}
 }
