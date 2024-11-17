@@ -26,8 +26,10 @@ var templates = template.Must(template.ParseGlob("static/*.html"))
 var db *sql.DB
 
 func main() {
+	log.Println("Hello")
 	var err error
 	db, err = sql.Open("sqlite3", "people.db")
+
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -155,12 +157,6 @@ func getPersonByID(id int) (*Person, error) {
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the user is already authenticated
-	fmt.Println("authHandler")
-	cookie, err := r.Cookie("authenticated")
-	if err == nil && cookie.Value == "true" {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
 	fmt.Println("r.Method", r.Method)
 	if r.Method == http.MethodPost {
 		username := r.FormValue("username")
@@ -173,13 +169,21 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			http.SetCookie(w, &cookie)
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
+		} else {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}
+	}
+	cookie, err := r.Cookie("authenticated")
+	if err == nil && cookie.Value == "true" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
 	}
 	err = templates.ExecuteTemplate(w, "auth.html", nil)
 	if err != nil {
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 }
+
 
 func poepleListHandler(w http.ResponseWriter, r *http.Request) {
 	people, err := getAllPeople()
